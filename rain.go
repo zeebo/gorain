@@ -50,7 +50,8 @@ func main() {
 	}
 
 	router := new(mux.Router)
-	router.HandleFunc("/print", w(announce))
+	router.HandleFunc("/a", w(announce)) //dont support scrapes
+	router.HandleFunc("/ping", w(ping))
 	if err := http.ListenAndServe(":9988", router); err != nil {
 		log.Fatal(err)
 	}

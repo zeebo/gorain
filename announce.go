@@ -2,75 +2,18 @@ package main
 
 import (
 	"fmt"
-	"github.com/zeebo/bencode"
 	"http"
-	"log"
 	"net"
 	"os"
 )
 
-func announceRecover(w http.ResponseWriter) {
-	err := recover()
-	if err == nil {
-		return
-	}
-	w.WriteHeader(http.StatusInternalServerError)
-
-	enc := bencode.NewEncoder(w)
-	enc.Encode(M{"failure reason": err})
-
-	//DEBUG: newline for debugging
-	fmt.Fprintln(w, "")
-}
-
-func announce(c *Context) {
-	defer announceRecover(c.w)
-
-	log.Print(c.r.RawURL)
-	a, err := ParseAnnounce(c.r)
-	if err != nil {
-		log.Panic("ERROR: ", err)
-	}
-	//grab the user by ip
-	co := c.DB.C("users")
-
-	var user *User
-	co.Find(M{"ips": a.IP.String()}).One(&user)
-	if user == nil {
-		log.Panic("Unauthorized IP: ", a.IP)
-	}
-
-	var hasInfo bool
-	var tinfo TorrentInfo
-	for _, tinfo = range user.Info {
-		if tinfo.InfoHash == a.InfoHash {
-			hasInfo = true
-			break
-		}
-	}
-	//if it's in there, pop it off
-	if hasInfo {
-		co.Update(M{"_id": user.ID}, M{"$pull": M{"info": tinfo}})
-	}
-
-	//push in the new torrent state
-	tinfo = TorrentInfo{
-		InfoHash: a.InfoHash,
-		State:    a.Event,
-	}
-
-	co.Update(M{"_id": user.ID}, M{"$push": M{"info": tinfo}})
-
-	co.Find(M{"_id": user.ID}).One(&user)
-	fmt.Fprintln(c.w, user)
-}
-
-type TorrentState string
+type TEvent string
 
 const (
-	TorrentStarted   = TorrentState("started")
-	TorrentStopped   = TorrentState("stopped")
-	TorrentCompleted = TorrentState("completed")
+	TEventNone      = ""
+	TEventStarted   = "started"
+	TEventStopped   = "stopped"
+	TEventCompleted = "completed"
 )
 
 type Announce struct {
@@ -82,7 +25,7 @@ type Announce struct {
 	Left       int64
 	Compact    bool
 	NoPeerId   bool
-	Event      TorrentState
+	Event      TEvent
 	Numwant    int
 	IP         net.IP
 	Key        string
@@ -117,11 +60,12 @@ func ParseAnnounce(r *http.Request) (*Announce, os.Error) {
 	}
 
 	//need to parse in event as enum type
-	a.Event = TorrentState(r.FormValue("event"))
+	a.Event = TEvent(r.FormValue("event"))
 	switch a.Event {
-	case TorrentStarted:
-	case TorrentStopped:
-	case TorrentCompleted:
+	case TEventStarted:
+	case TEventStopped:
+	case TEventCompleted:
+	case TEventNone:
 	default:
 		return nil, fmt.Errorf("Unknown event type: %q", a.Event)
 	}

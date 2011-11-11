@@ -15,7 +15,7 @@ type parser struct {
 }
 
 func (p *parser) Int(v *int, s string, r bool) {
-	if p.err != nil || (!r && p.r.FormValue("") == "") {
+	if p.err != nil || (!r && p.r.FormValue(s) == "") {
 		return
 	}
 	*v, p.err = strconv.Atoi(p.r.FormValue(s))
@@ -25,7 +25,7 @@ func (p *parser) Int(v *int, s string, r bool) {
 }
 
 func (p *parser) Int64(v *int64, s string, r bool) {
-	if p.err != nil || (!r && p.r.FormValue("") == "") {
+	if p.err != nil || (!r && p.r.FormValue(s) == "") {
 		return
 	}
 	*v, p.err = strconv.Atoi64(p.r.FormValue(s))
@@ -35,7 +35,7 @@ func (p *parser) Int64(v *int64, s string, r bool) {
 }
 
 func (p *parser) Bool(v *bool, s string, r bool) {
-	if p.err != nil || (!r && p.r.FormValue("") == "") {
+	if p.err != nil || (!r && p.r.FormValue(s) == "") {
 		return
 	}
 	*v, p.err = strconv.Atob(p.r.FormValue(s))
