@@ -40,6 +40,28 @@ func announce(c *Context) {
 		log.Panic("Unauthorized IP: ", a.IP)
 	}
 
+	var hasInfo bool
+	var tinfo TorrentInfo
+	for _, tinfo = range user.Info {
+		if tinfo.InfoHash == a.InfoHash {
+			hasInfo = true
+			break
+		}
+	}
+	//if it's in there, pop it off
+	if hasInfo {
+		co.Update(M{"_id": user.ID}, M{"$pull": M{"info": tinfo}})
+	}
+
+	//push in the new torrent state
+	tinfo = TorrentInfo{
+		InfoHash: a.InfoHash,
+		State:    a.Event,
+	}
+
+	co.Update(M{"_id": user.ID}, M{"$push": M{"info": tinfo}})
+
+	co.Find(M{"_id": user.ID}).One(&user)
 	fmt.Fprintln(c.w, user)
 }
 
